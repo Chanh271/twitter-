@@ -1,0 +1,40 @@
+import logging
+import requests
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+
+BOT_TOKEN = "7721653542:AAFzLQ1sL1AxJyXTcVAklvcnGUw19XoFVqo"
+TWITTER_DL_API = "https://twitsave.com/info?url="
+
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Chào bạn! Gửi mình link Twitter để tải video nhé.")
+
+async def download_twitter_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    url = update.message.text.strip()
+    if "twitter.com" not in url:
+        await update.message.reply_text("Vui lòng gửi một liên kết Twitter hợp lệ.")
+        return
+
+    try:
+        response = requests.get(TWITTER_DL_API + url)
+        data = response.json()
+
+        if "links" in data and data["links"]:
+            best_quality = data["links"][0]["url"]
+            await update.message.reply_video(video=best_quality)
+        else:
+            await update.message.reply_text("Không tìm thấy video hoặc video riêng tư.")
+    except Exception as e:
+        await update.message.reply_text(f"Lỗi: {e}")
+
+if __name__ == '__main__':
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, download_twitter_video))
+    print("Bot đang chạy...")
+    app.run_polling()
